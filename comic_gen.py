@@ -10,12 +10,14 @@ from PIL import Image
 from tqdm.auto import tqdm
 from datetime import datetime
 from utils.gradio_utils import is_torch2_available
-
+from accelerate import PartialState
+from diffusers import DiffusionPipeline
 if is_torch2_available():
     from utils.gradio_utils import AttnProcessor2_0 as AttnProcessor
 else:
     from utils.gradio_utils import AttnProcessor
-
+from accelerate import Accelerator
+from accelerate.logging import get_logger
 import diffusers
 from diffusers import StableDiffusionXLPipeline
 from diffusers import DDIMScheduler
@@ -25,7 +27,12 @@ import copy
 from diffusers.utils import load_image
 from utils.utils import get_comic
 from utils.style_template import styles
-
+import os
+import torch
+from torch.utils.data import Dataset, DataLoader
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["NCCL_P2P_DISABLE"] = "1"
+os.environ["NCCL_IB_DISABLE"] = "1"
 # 全局变量
 STYLE_NAMES = list(styles.keys())
 DEFAULT_STYLE_NAME = "(No style)"
@@ -266,20 +273,74 @@ class SpatialAttnProcessor2_0(torch.nn.Module):
         hidden_states = hidden_states / attn.rescale_output_factor
 
         return hidden_states
+class PromptDataset(Dataset):
+    def __init__(self, prompts):
+        self.prompts = prompts
+
+    def __len__(self):
+        return len(self.prompts)
+
+    def __getitem__(self, idx):
+        return self.prompts[idx]
+
+# 初始化数据集和Dataloader
+
+    
+# def load_image(
+#     image: Union[str, PIL.Image.Image], convert_method: Callable[[PIL.Image.Image], PIL.Image.Image] = None
+# ) -> PIL.Image.Image:
+#     """
+#     Loads `image` to a PIL Image.
+
+#     Args:
+#         image (`str` or `PIL.Image.Image`):
+#             The image to convert to the PIL Image format.
+#         convert_method (Callable[[PIL.Image.Image], PIL.Image.Image], optional):
+#             A conversion method to apply to the image after loading it. When set to `None` the image will be converted
+#             "RGB".
+
+#     Returns:
+#         `PIL.Image.Image`:
+#             A PIL Image.
+#     """
+#     if isinstance(image, str):
+#         if image.startswith("http://") or image.startswith("https://"):
+#             image = PIL.Image.open(requests.get(image, stream=True).raw)
+#         elif os.path.isfile(image):
+#             image = PIL.Image.open(image)
+#         else:
+#             raise ValueError(
+#                 f"Incorrect path or URL. URLs must start with `http://` or `https://`, and {image} is not a valid path."
+#             )
+#     elif isinstance(image, PIL.Image.Image):
+#         image = image
+#     else:
+#         raise ValueError(
+#             "Incorrect format used for the image. Should be a URL linking to an image, a local path, or a PIL image."
+#         )
+
+#     image = PIL.ImageOps.exif_transpose(image)
+
+#     if convert_method is not None:
+#         image = convert_method(image)
+#     else:
+#         image = image.convert("RGB")
+
+#     return image
 
 
 def set_attention_processor(unet, id_length):
     attn_procs = {}
-    for name in unet.attn_processors.keys():
-        cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
+    for name in unet.module.attn_processors.keys():
+        cross_attention_dim = None if name.endswith("attn1.processor") else unet.module.config.cross_attention_dim
         if name.startswith("mid_block"):
-            hidden_size = unet.config.block_out_channels[-1]
+            hidden_size = unet.module.config.block_out_channels[-1]
         elif name.startswith("up_blocks"):
             block_id = int(name[len("up_blocks.")])
-            hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+            hidden_size = list(reversed(unet.module.config.block_out_channels))[block_id]
         elif name.startswith("down_blocks"):
             block_id = int(name[len("down_blocks.")])
-            hidden_size = unet.config.block_out_channels[block_id]
+            hidden_size = unet.module.config.block_out_channels[block_id]
         if cross_attention_dim is None:
             if name.startswith("up_blocks"):
                 attn_procs[name] = SpatialAttnProcessor2_0(id_length=id_length)
@@ -287,7 +348,7 @@ def set_attention_processor(unet, id_length):
                 attn_procs[name] = AttnProcessor()
         else:
             attn_procs[name] = AttnProcessor()
-    unet.set_attn_processor(attn_procs)
+    unet.module.set_attn_processor(attn_procs)
 
 # 加载 Stable Diffusion 管道
 global attn_count, total_count, id_length, total_length, cur_step, cur_model_type
@@ -298,42 +359,113 @@ attn_count = 0
 total_count = 0
 cur_step = 0
 id_length = 4
-total_length = 5
+total_length= 4
 cur_model_type = ""
-device = "cuda"
+# device = "cuda"
 global attn_procs, unet
 attn_procs = {}
 write = False
 sa32 = 0.5
 sa64 = 0.5
-height = 768
-width = 768
+height = 512
+width = 512
 global pipe
 global sd_model_path
 # sd_model_path = models_dict["RealVision"]
 sd_model_path = models_dict["SDXL"]
-pipe = StableDiffusionXLPipeline.from_pretrained(sd_model_path, torch_dtype=torch.float16)
-pipe = pipe.to(device)
+from utils.pipeline import PhotoMakerStableDiffusionXLPipeline
+from diffusers.utils import load_image
+from diffusers import EulerDiscreteScheduler
+from huggingface_hub import hf_hub_download
+photomaker_ckpt = hf_hub_download(repo_id="TencentARC/PhotoMaker", filename="photomaker-v1.bin", repo_type="model")
+accelerator = Accelerator(mixed_precision="fp16")
+from accelerate import infer_auto_device_map
+
+# device_map = infer_auto_device_map(, max_memory={0: "20GiB", 1: "20GiB", 2: "20GiB", 3: "20GiB"})
+pipe = PhotoMakerStableDiffusionXLPipeline.from_pretrained(
+    "SG161222/RealVisXL_V4.0",  # can change to any base model based on SDXL
+    torch_dtype=torch.float16, 
+    use_safetensors=True, 
+    variant="fp16",
+    pm_version='v1',
+    # device_map = 'auto'
+    # device_map='auto'
+)
+pipe.load_photomaker_adapter(
+    os.path.dirname(photomaker_ckpt),
+    subfolder="",
+    weight_name=os.path.basename(photomaker_ckpt),
+    trigger_word="img",
+    pm_version='v1'
+)
+
+# pipe.id_encoder.to(accelerator.device)
+pipe.enable_model_cpu_offload()
+# pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+pipe.fuse_lora()
+
+### define the input ID images
+input_folder_name = '/root/autodl-tmp/Proj/StoryDiffusion/examples/lecun'
+image_basename_list = os.listdir(input_folder_name)
+image_path_list = sorted([os.path.join(input_folder_name, basename) for basename in image_basename_list])
+
+input_id_images = []
+for image_path in image_path_list:
+    input_id_images.append(load_image(image_path))
+# pipe = StableDiffusionXLPipeline.from_pretrained(sd_model_path, torch_dtype=torch.float16)
+# pipe = pipe.to(device)
 pipe.enable_freeu(s1=0.6, s2=0.4, b1=1.1, b2=1.2)
 pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
 pipe.scheduler.set_timesteps(50)
+
+# prompts = ["comic Cartoon-character img is sitting . graphic illustration, comic art, graphic novel art, vibrant, highly detailed","comic Cartoon-character img is standing . graphic illustration, comic art, graphic novel art, vibrant, highly detailed","comic Cartoon-character img is working . graphic illustration, comic art, graphic novel art, vibrant, highly detailed","comic Cartoon-character img is eating . graphic illustration, comic art, graphic novel art, vibrant, highly detailed"]  # 替换为你的id_prompts列表
+# prompts = ["Cartoon-character img is sitting . comic art,highly detailed","Cartoon-character img is standing . comic art,highly detailed","Cartoon-character img is working . comic art,highly detailed","Cartoon-character img is walking in the street . comic art,highly detailed"] 
+prompts = ["Cartoon-character img is sitting . cartoon, highly detailed","Cartoon-character img is standing . cartoon,highly detailed","Cartoon-character img is working . cartoon,highly detailed","Cartoon-character img is walking in the street . cartoon,highly detailed"] 
+dataset = PromptDataset(prompts)
+dataloader = DataLoader(dataset, batch_size=4, shuffle=False)
+
+pipe,dataloader = accelerator.prepare(pipe,dataloader)
+pipe = pipe.to(accelerator.device)
 unet = pipe.unet
+# unet.to(accelerator.device)
+# 
+from accelerate import load_checkpoint_and_dispatch
+
+# model = load_checkpoint_and_dispatch(
+#     pipe, checkpoint=checkpoint_file, device_map="auto"
+# )
+
 guidance_scale = 5.0
 seed = 2047
 sa32 = 0.5
 sa64 = 0.5
-id_length = 4
+
 num_steps = 50
 general_prompt = "a man with a black suit"
 negative_prompt = "naked, deformed, bad anatomy, disfigured, poorly drawn face, mutation, extra limb, ugly, disgusting, poorly drawn hands, missing limb, floating limbs, disconnected limbs, blurry, watermarks, oversaturated, distorted hands, amputation"
 prompt_array = ["wake up in the bed",
-                "have breakfast",
-                "is on the road, go to the company",
-                "work in the company",
-                "running in the playground",
-                "reading book in the home"
+                # "have breakfast",
+                # "is on the road, go to the company",
+                # "work in the company",
+                # "running in the playground",
+                # "reading book in the home"
                 ]
 # 插入 PairedAttention
+# for name in unet.module.attn_processors.keys():
+#     cross_attention_dim = None if name.endswith("attn1.processor") else unet.module.config.cross_attention_dim
+#     if name.startswith("mid_block"):
+#         hidden_size = unet.module.config.block_out_channels[-1]
+#     elif name.startswith("up_blocks"):
+#         block_id = int(name[len("up_blocks.")])
+#         hidden_size = list(reversed(unet.module.config.block_out_channels))[block_id]
+#     elif name.startswith("down_blocks"):
+#         block_id = int(name[len("down_blocks.")])
+#         hidden_size = unet.module.config.block_out_channels[block_id]
+#     if cross_attention_dim is None and (name.startswith("up_blocks")):
+#         attn_procs[name] = SpatialAttnProcessor2_0(id_length=id_length)
+#         total_count += 1
+#     else:
+#         attn_procs[name] = AttnProcessor()
 for name in unet.attn_processors.keys():
     cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
     if name.startswith("mid_block"):
@@ -350,9 +482,10 @@ for name in unet.attn_processors.keys():
     else:
         attn_procs[name] = AttnProcessor()
 
+# unet.module.set_attn_processor(copy.deepcopy(attn_procs))
 unet.set_attn_processor(copy.deepcopy(attn_procs))
 global mask1024, mask4096
-mask1024, mask4096 = cal_attn_mask_xl(total_length, id_length, sa32, sa64, height, width, device=device, dtype=torch.float16)
+mask1024, mask4096 = cal_attn_mask_xl(total_length, id_length, sa32, sa64, height, width, device=accelerator.device, dtype=torch.float16)
 def apply_style_positive(style_name: str, positive: str):
     p, n = styles.get(style_name, styles[DEFAULT_STYLE_NAME])
     return p.replace("{prompt}", positive) 
@@ -371,15 +504,32 @@ write = True
 cur_step = 0
 attn_count = 0
 id_prompts, negative_prompt = apply_style(style_name, id_prompts, negative_prompt)
-id_images = pipe(id_prompts, num_inference_steps=num_steps, guidance_scale=guidance_scale, height=height, width=width, negative_prompt=negative_prompt, generator=generator).images
+# id_images = pipe(id_prompts, num_inference_steps=num_steps, guidance_scale=guidance_scale, height=height, width=width, negative_prompt=negative_prompt, generator=generator).images
+print(id_prompts)
+style_strength_ratio = 20
+start_merge_step = int(float(style_strength_ratio) / 100 * num_steps)
+if start_merge_step > 30:
+    start_merge_step = 30
+from diffusers.utils import load_image
+input_id_images = [load_image(str("/root/autodl-tmp/Proj/StoryDiffusion/examples/Harry/00001-0-00029-0-Harley Image.png")),load_image("/root/autodl-tmp/Proj/StoryDiffusion/examples/Harry/00013-0-00076-0-Sports2-1.png"),load_image("/root/autodl-tmp/Proj/StoryDiffusion/examples/Harry2/00002-0-00070-0-Sports4-5.png")]
+# input_id_images = [img.to(accelerator.device) for img in input_id_images]
 
+for idx,batch in enumerate(dataloader):
+    
+    id_images = pipe(prompt=batch, input_id_images=input_id_images,num_inference_steps=num_steps, guidance_scale=guidance_scale, height=height, width=width, negative_prompt=negative_prompt, generator=generator,num_images_per_prompt=1,start_merge_step=start_merge_step).images
+
+    # id_images[0].save(f"generated_image3.png")
+    output_path = "./res2"
+    os.makedirs(output_path,exist_ok=True)
+    for i, img in enumerate(id_images):
+        img.save(f"{output_path}/generated_image_{idx}_{i}.png")
 write = False
 real_images = []
-for real_prompt in real_prompts:
-    cur_step = 0
-    real_prompt = apply_style_positive(style_name, real_prompt)
-    real_images.append(pipe(real_prompt, num_inference_steps=num_steps, guidance_scale=guidance_scale, height=height, width=width, negative_prompt=negative_prompt, generator=generator).images[0])
+# for real_prompt in real_prompts:
+#     cur_step = 0
+#     real_prompt = apply_style_positive(style_name, real_prompt)
+#     real_images.append(pipe(real_prompt, num_inference_steps=num_steps, guidance_scale=guidance_scale, height=height, width=width, negative_prompt=negative_prompt, generator=generator).images[0])
 
-# 保存或处理生成的图片
-for idx, image in enumerate(id_images + real_images):
-    image.save(f"generated_image_{idx}.png")
+# # 保存或处理生成的图片
+# for idx, image in enumerate(id_images + real_images):
+#     image.save(f"generated_image_{idx}.png")

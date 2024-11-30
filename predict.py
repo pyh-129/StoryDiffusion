@@ -18,10 +18,10 @@ from utils import PhotoMakerStableDiffusionXLPipeline
 from utils.style_template import styles
 from utils.gradio_utils import (
     AttnProcessor2_0 as AttnProcessor,
+    IPAttnProcessor2_0
 )  # with torch2 installed
 from utils.gradio_utils import cal_attn_mask_xl
 from utils.utils import get_comic
-
 MODEL_URL = "https://weights.replicate.delivery/default/HVision_NKU/StoryDiffusion.tar"
 MODEL_CACHE = "model_weights"
 STYLE_NAMES = list(styles.keys())
@@ -89,6 +89,45 @@ def apply_style(style_name: str, positives: list, negative: str = ""):
     ], n + " " + negative
 
 
+# def set_attention_processor(unet, id_length, is_ipadapter=False):
+#     global total_count
+#     total_count = 0
+#     attn_procs = {}
+#     for name in unet.attn_processors.keys():
+#         cross_attention_dim = (
+#             None
+#             if name.endswith("attn1.processor")
+#             else unet.config.cross_attention_dim
+#         )
+#         if name.startswith("mid_block"):
+#             hidden_size = unet.config.block_out_channels[-1]
+#         elif name.startswith("up_blocks"):
+#             block_id = int(name[len("up_blocks.")])
+#             hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+#         elif name.startswith("down_blocks"):
+#             block_id = int(name[len("down_blocks.")])
+#             hidden_size = unet.config.block_out_channels[block_id]
+#         if cross_attention_dim is None:
+#             if name.startswith("up_blocks"):
+#                 attn_procs[name] = SpatialAttnProcessor2_0(id_length=id_length)
+#                 total_count += 1
+#             else:
+#                 attn_procs[name] = AttnProcessor()
+#         else:
+#             if is_ipadapter:
+#                 attn_procs[name] = IPAttnProcessor2_0(
+#                     hidden_size=hidden_size,
+#                     cross_attention_dim=cross_attention_dim,
+#                     scale=1,
+#                     num_tokens=4,
+#                 ).to(unet.device, dtype=torch.float16)
+#             else:
+#                 attn_procs[name] = AttnProcessor()
+
+#     unet.set_attn_processor(copy.deepcopy(attn_procs))
+#     print("Successfully load paired self-attention")
+#     print(f"Number of the processor : {total_count}")
+
 def set_attention_processor(unet, id_length, is_ipadapter=False):
     global total_count
     total_count = 0
@@ -127,7 +166,6 @@ def set_attention_processor(unet, id_length, is_ipadapter=False):
     unet.set_attn_processor(copy.deepcopy(attn_procs))
     print("Successfully load paired self-attention")
     print(f"Number of the processor : {total_count}")
-
 
 #################################################
 ########Consistent Self-Attention################

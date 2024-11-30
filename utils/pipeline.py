@@ -405,10 +405,14 @@ class PhotoMakerStableDiffusionXLPipeline(StableDiffusionXLPipeline):
                     id_pixel_values = self.id_image_processor(input_id_images, return_tensors="pt").pixel_values
 
                 id_pixel_values = id_pixel_values.unsqueeze(0).to(device=device, dtype=dtype) # TODO: multiple prompts
-
+      
                 # duplicate text embeddings for each generation per prompt, using mps friendly method
                 if not nc_flag:
                     # 6. Get the update text embedding with the stacked ID embedding
+                    prompt_embeds = prompt_embeds.to(device)
+                    class_tokens_mask = class_tokens_mask.to(device)
+                    id_pixel_values = id_pixel_values.to(device)
+                    self.id_encoder = self.id_encoder.to(device)
                     prompt_embeds = self.id_encoder(id_pixel_values, prompt_embeds, class_tokens_mask)
 
                     bs_embed, seq_len, _ = prompt_embeds.shape

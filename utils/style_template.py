@@ -15,6 +15,12 @@ style_list = [
         "negative_prompt": "anime, cartoon, graphic, text, painting, crayon, graphite, abstract, glitch, deformed, mutated, ugly, disfigured, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
     },
     {
+    "name": "Vibrant Cartoon Character",
+    "prompt": "{prompt} . (Cartoon:1.5), colorful, exaggerated expressions, humorous illustration, high saturation, clean lines, sharp focus, big depth of field, 4k resolution, digital art",
+    "negative_prompt": "oil painting, dark, atmospheric, abstract, glitch, deformed, mutated, ugly, disfigured, lowres, bad anatomy, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+},
+
+    {
         "name": "Pixar/Disney Character",
         "prompt": "Create a Disney Pixar 3D style illustration on {prompt} . The scene is vibrant, motivational, filled with vivid colors and a sense of wonder.",
         "negative_prompt": "lowres, bad anatomy, bad hands, text, bad eyes, bad arms, bad legs, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, blurry, grayscale, noisy, sloppy, messy, grainy, highly detailed, ultra textured, photo",

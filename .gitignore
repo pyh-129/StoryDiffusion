@@ -96,3 +96,8 @@ results/
 fonts/agency.ttf
 fonts/calibri.ttf
 data/
+models/
+sdxl_models/
+res/
+res_t2/
+examples/
