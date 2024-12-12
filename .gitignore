@@ -100,4 +100,6 @@ models/
 sdxl_models/
 res/
 res_t2/
+res_t/
 examples/
+images/

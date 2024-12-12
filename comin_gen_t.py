@@ -575,8 +575,8 @@ attn_count = 0
 total_count = 0
 cur_step = 0
 cur_step2=0
-id_length = 5
-total_length = 6
+id_length = 4
+total_length = 5
 cur_model_type = ""
 device="cuda"
 global attn_procs,unet
@@ -637,34 +637,123 @@ mask1024, mask4096 = cal_attn_mask_xl(total_length,id_length,sa32,sa64,height,wi
 
 guidance_scale = 5.0
 seed = 2047
+# seed = 2047
 sa32 = 0.5
 sa64 = 0.5
 # id_length = 4
 num_steps = 50
 # general_prompt = "a man with a black suit"
-general_prompt = "a woman with a dress"
+general_prompt = "a girl with a shirt"
 negative_prompt = "naked, deformed, bad anatomy, disfigured, poorly drawn face, mutation, extra limb, ugly, disgusting, poorly drawn hands, missing limb, floating limbs, disconnected limbs, blurry, watermarks, oversaturated, distorted hands, amputation"
-prompt_array = ["wake up in the bed",
-                "have breakfast",
-                "is on the road, go to the company",
-                "work in the company",
-                "running in the playground",
-                "reading book in the home"
-                ]
+# prompt_array = ["wake up in the bed",
+#                 "have breakfast",
+#                 "is on the road, go to the company",
+#                 "work in the company",
+#                 "running in the playground",
+#                 "reading book in the home"
+#                 ]
+# prompt_array = [
+#     "Wake up in a cozy, sunlit bed, feeling refreshed.",
+#     "Sit down to a hearty breakfast, enjoying your favorite foods.",
+#     "Take the road early, heading to the company amidst bustling city traffic.",
+#     "Focus on a challenging project at the company's office.",
+#     "Run laps in the local playground, feeling the wind and freedom of movement.",
+#     "Curl up at home with a captivating book, losing track of time in its pages.",
+#     "Stroll through a lively market, picking out fresh produce and artisan goods.",
+#     "Meet a friend for a leisurely lunch at a bustling café.",
+#     "Spend an afternoon volunteering at a local community center.",
+#     "Cook a delicious dinner, experimenting with new recipes and flavors.",
+#     "Watch the sunset from a scenic overlook, reflecting on the day's experiences.",
+#     "Settle in for an evening of films and relaxation, enjoying some well-earned downtime."
+# ]
+# prompt_array = [
+#     "Once upon a time, in a village nestled between the hills, Lived a boy, with magic in his quills.",
+#     "One day, the boy decided to explore the forest near, where whispers of magic and wonder did appear.",
+#     "He met fairies who danced on the dew-kissed grass, And shared stories of magic, that filled Harry with awe.",
+#     "He followed a path that was winding and long, to a hidden cave where the magic did throng.",
+#     "Inside, he found crystals that shone bright and clear, And a pool where the waters were magic to hear.",
+#     "In this enchanted forest, every step the boy took was filled with surprise and discovery.",
+#     "He encountered a talking stag, with antlers that glittered like the stars.",
+#     "The stag spoke of ancient secrets and paths that led to hidden realms.",
+#     "Eager to learn more, the boy followed the stag through the twisting underbrush to a glade illuminated by fireflies.",
+#     "There, the fireflies swirled around a majestic oak, under which sat an old wise owl.",
+#     "The owl, knowing the boy's quest for knowledge, bestowed upon him a golden feather.",
+#     "This feather, he explained, held the essence of true magic, capable of unlocking the mysteries of the forest and beyond.",
+#     "With the golden feather in his quill, the boy wrote down his adventures.",
+#     "Each word he penned sparkled with magic, bringing his stories to life before his eyes.",
+#     "Trees whispered their ancient tales, rivers sang of forgotten kingdoms, and the winds carried melodies from distant lands.",
+#     "His journey grew ever more magical, as he learned to harness the power of his enchanted quill.",
+#     "Writing stories that bridged the world of humans and the mystical forces of nature.",
+#     "The boy's tales spread far and wide, inspiring all who heard them to believe in the magic that surrounds us, hidden just beyond the veil of the ordinary."
+# ]
+
+
+# prompt_array = [
+#     "Amy was a little girl who lived in a small, quiet town. She had a toy bear named Teddy, who was her best friend and confidant.",
+#     "Every day after school, Amy would sit by the window with Teddy, dreaming about all the adventures they could have together.",
+#     "One afternoon, Amy decided she wanted to do something special for Teddy, so she carefully crafted a tiny scarf for him using colorful threads.",
+#     "When Amy placed the scarf around Teddy's neck, she smiled and imagined that Teddy, like her, was ready for a grand adventure.",
+#     "That evening, as the sun set, Amy whispered to Teddy that they were going to have the best adventure ever, and she promised to always keep him by her side.",
+#     "The next day, Amy took Teddy outside and showed him the wonders of the garden, telling him all about the birds, the flowers, and the little insects she’d met.",
+#     "As they explored, Amy began to realize that every day, with Teddy by her side, even the smallest moments were full of magic and joy.",
+#     "From that day on, Amy always made time for her adventures with Teddy, no matter how simple or ordinary they seemed, because with him, every day felt extraordinary."
+# ]
+
+
+
+
+
+# prompt_array = [
+#     # "Amy was a little girl who woke up early. She felt tired but excited.",
+#     "A little girl woke up early. She felt tired but excited.",
+#     "She quickly got dressed. Today was a new day.",
+#     "At school, Amy felt nervous. It was her first test.",
+#     "Her heart raced. She picked up her pencil.",
+#     "As she worked, she felt more confident.",
+#     "When the test ended, Amy felt relieved.",
+#     "Later, she met her friend. They laughed together.",
+#     "As the sun set, Amy felt peaceful.",
+#     "At bedtime, she felt proud of herself."
+# ]
 prompt_array = [
-    "Wake up in a cozy, sunlit bed, feeling refreshed.",
-    "Sit down to a hearty breakfast, enjoying your favorite foods.",
-    "Take the road early, heading to the company amidst bustling city traffic.",
-    "Focus on a challenging project at the company's office.",
-    "Run laps in the local playground, feeling the wind and freedom of movement.",
-    "Curl up at home with a captivating book, losing track of time in its pages.",
-    "Stroll through a lively market, picking out fresh produce and artisan goods.",
-    "Meet a friend for a leisurely lunch at a bustling café.",
-    "Spend an afternoon volunteering at a local community center.",
-    "Cook a delicious dinner, experimenting with new recipes and flavors.",
-    "Watch the sunset from a scenic overlook, reflecting on the day's experiences.",
-    "Settle in for an evening of films and relaxation, enjoying some well-earned downtime."
+    # "Amy was a little girl who woke up early. She felt tired but excited.",
+    "Woke up early from the bed, feeling the warmth of the morning sun on the face.",
+    "Swung legs off the bed, feet touching the cool floor, ready to start the day with energy.",
+    "Walked to the bathroom, brushing teeth quickly while thinking about the events of the day ahead.",
+    "Put on a favorite dress, soft and colorful, feeling its comfort as it fit just right.",
+    "At school, sat at the desk, taking out the notebook and preparing for the lessons to come.",
+    "Raised a hand to answer a question, speaking softly but clearly, with a quiet confidence.",
+    "After class, grabbed the bag and smiled at a friend, feeling the joy of a day well spent.",
+    "Ran outside together, the wind against the face, laughing and enjoying the simple pleasure of movement.",
+    "Later, sat quietly under a tree, watching the leaves fall gently, feeling peaceful in the moment."
 ]
+prompt_array = [
+        "Walked to the kitchen, poured a glass of water, and took a quiet moment to drink it, feeling the coolness refresh the senses.",
+    "Sat at the table, opening a book and reading the first few pages with curiosity, absorbed in the new ideas unfolding.",
+    "At school, sat at the desk, paying attention to the teacher’s explanation and taking notes, eager to learn and understand more.",
+    "Raised a hand to ask a question, wanting to understand the subject more clearly, feeling a sense of engagement with the material.",
+    "After class, grabbed the bag and walked outside, feeling the cool breeze on the skin, enjoying the shift from the warmth of the classroom.",
+    "Met a friend in the hallway, shared a quick laugh, and talked about the next class, feeling the comfort of familiar company.",
+    "Later, sat on a bench outside, watching the sky and feeling a sense of peace in the moment, letting the quiet wash over and clear the mind.",
+    "A few moments passed, the clouds drifting lazily by, while thoughts about the day’s events slowly settled into contentment.",
+    "Stood up from the bench, stretching arms to the sky, ready to continue the day with a refreshed and calm spirit.",
+    "Walked back into the building, feeling the steady rhythm of footsteps, mentally preparing for whatever the next moment would bring."
+]
+
+prompt_array = [
+    "loved her toy bear, teddy.",
+    "every day after school, hugged him tightly and talked to him.",
+    "one afternoon, felt sad, wondering if teddy ever felt lonely.",
+    "decided to make him a tiny scarf to show how much cared.",
+    "when finished, smiled and placed the scarf around teddy's neck.",
+    "felt proud. teddy looked even more special now.",
+    "that evening, whispered to teddy, 'tomorrow, we'll have an adventure.'",
+    "the next day, felt excited. couldn’t wait to take teddy outside.",
+    "in the garden, showed teddy all the flowers and insects.",
+    "as they played, felt happy, realizing how special every moment was with teddy.",
+    "from then on, knew that no matter what, teddy would always be there by side."
+]
+
 
 
 
@@ -680,6 +769,7 @@ style_name = "Photographic"
 setup_seed(seed)
 generator = torch.Generator(device="cuda").manual_seed(seed)
 prompts = [general_prompt+","+prompt for prompt in prompt_array]
+print(prompts)
 id_prompts = prompts[:id_length]
 real_prompts = prompts[id_length:]
 torch.cuda.empty_cache()
@@ -690,7 +780,7 @@ id_prompts, negative_prompt = apply_style(style_name, id_prompts, negative_promp
 id_images = pipe(id_prompts, num_inference_steps = num_steps, guidance_scale=guidance_scale,  height = height, width = width,negative_prompt = negative_prompt,generator = generator).images
 
 write = False
-output_path = "./res_t/res_pho2"
+output_path = "./res_t/res_real7_teddy"
 os.makedirs(output_path,exist_ok=True)
 for idx,id_image in enumerate(id_images):
     id_image.save(f'{output_path}/id_image_{idx}.png')
